@@ -1,6 +1,7 @@
 #include "SleepScreen528.h"
 #include <cstring>
 #include <cstdio>
+#include <SD.h>
 
 namespace {
   // Bảng ký tự 8x16 (mỗi ký tự 16 byte, bit cao nhất ở bên trái)
@@ -398,4 +399,64 @@ void SleepScreen528::render(const CultivationState& st, const LunarDate& lunar,
 
   snprintf(buf, sizeof(buf), "Tuan %d/5 ngay", st.weeklyDoneDays);
   drawTextRight(WIDTH - margin, 738, buf, 2, false);
+}
+bool SleepScreen528::saveToBMP(const char* path) const {
+  File f = SD.open(path, FILE_WRITE);
+  if (!f) return false;
+
+  const uint32_t rowBytes = ((WIDTH + 31) / 32) * 4; // 528 bit = 66 byte -> căn 4 byte = 68 byte/dòng
+  const uint32_t pixelDataSize = rowBytes * HEIGHT;
+  const uint32_t paletteSize = 2 * 4; // 2 màu (đen/trắng), mỗi màu 4 byte (B,G,R,0)
+  const uint32_t headerSize = 14 + 40 + paletteSize;
+  const uint32_t fileSize = headerSize + pixelDataSize;
+
+  uint8_t hdr[14] = {0};
+  hdr[0] = 'B'; hdr[1] = 'M';
+  hdr[2] = (uint8_t)(fileSize & 0xFF);
+  hdr[3] = (uint8_t)((fileSize >> 8) & 0xFF);
+  hdr[4] = (uint8_t)((fileSize >> 16) & 0xFF);
+  hdr[5] = (uint8_t)((fileSize >> 24) & 0xFF);
+  hdr[10] = (uint8_t)(headerSize & 0xFF);
+  hdr[11] = (uint8_t)((headerSize >> 8) & 0xFF);
+
+  uint8_t dib[40] = {0};
+  dib[0] = 40; // BITMAPINFOHEADER
+  dib[4] = (uint8_t)(WIDTH & 0xFF);
+  dib[5] = (uint8_t)((WIDTH >> 8) & 0xFF);
+  dib[8] = (uint8_t)(HEIGHT & 0xFF);
+  dib[9] = (uint8_t)((HEIGHT >> 8) & 0xFF);
+  dib[12] = 1; // planes
+  dib[14] = 1; // 1 bit per pixel
+  dib[20] = (uint8_t)(pixelDataSize & 0xFF);
+  dib[21] = (uint8_t)((pixelDataSize >> 8) & 0xFF);
+  dib[22] = (uint8_t)((pixelDataSize >> 16) & 0xFF);
+  dib[23] = (uint8_t)((pixelDataSize >> 24) & 0xFF);
+
+  // Palette: index 0 = đen, index 1 = trắng
+  uint8_t palette[8] = {
+    0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xFF, 0xFF, 0x00
+  };
+
+  f.write(hdr, sizeof(hdr));
+  f.write(dib, sizeof(dib));
+  f.write(palette, sizeof(palette));
+
+  // BMP lưu từ dòng dưới cùng (y = HEIGHT - 1) lên dòng trên cùng (y = 0)
+  uint8_t rowBuf[68];
+  for (int y = HEIGHT - 1; y >= 0; y--) {
+    memset(rowBuf, 0, rowBytes);
+    for (int x = 0; x < WIDTH; x++) {
+      int srcIdx = y * (WIDTH / 8) + (x / 8);
+      uint8_t mask = (uint8_t)(0x80 >> (x % 8));
+      bool isBlack = ((_buf[srcIdx] & mask) == 0);
+      if (!isBlack) {
+        rowBuf[x / 8] |= (uint8_t)(0x80 >> (x % 8));
+      }
+    }
+    f.write(rowBuf, rowBytes);
+  }
+
+  f.close();
+  return true;
 }
