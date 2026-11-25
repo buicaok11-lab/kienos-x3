@@ -1,9 +1,13 @@
 #include <Arduino.h>
+#include "LunarCalendar.h"
 
 void setup() {
   Serial.begin(115200);
   delay(200);
-  Serial.println("KienOS X3 booted (528x792, ESP32-C3)");
+
+  LunarDate ld = LunarCalendar::solarToLunar(25, 11, 2026);
+  Serial.printf("Am lich: %02d/%02d (%s) - Ngay %s\n",
+                ld.day, ld.month, ld.yearCanChi.c_str(), ld.dayCanChi.c_str());
 }
 
 void loop() {
