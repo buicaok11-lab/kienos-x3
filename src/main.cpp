@@ -1,13 +1,21 @@
 #include <Arduino.h>
 #include "LunarCalendar.h"
+#include "CultivationManager.h"
+
+CultivationState g_state;
 
 void setup() {
   Serial.begin(115200);
   delay(200);
 
   LunarDate ld = LunarCalendar::solarToLunar(25, 11, 2026);
-  Serial.printf("Am lich: %02d/%02d (%s) - Ngay %s\n",
-                ld.day, ld.month, ld.yearCanChi.c_str(), ld.dayCanChi.c_str());
+  CultivationManager::recordReadingSession(g_state, 15, 1200, true, false, ld.isDoubleSpiritDay());
+
+  Serial.printf("Canh gioi: %s Tang %d | Linh thach: %d | Phap bao: %d/36\n",
+                CultivationManager::getRealmName(g_state.realmIndex).c_str(),
+                g_state.realmLayer,
+                g_state.spiritStones,
+                CultivationManager::getUnlockedArtifactCount(g_state));
 }
 
 void loop() {
