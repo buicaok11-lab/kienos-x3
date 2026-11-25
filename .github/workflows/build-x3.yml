@@ -1,0 +1,45 @@
+name: Build KienOS Firmware for Xteink X3
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build-x3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python for PlatformIO
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO Core
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-x3-esp32c3-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-x3-esp32c3-
+
+      - name: Build firmware for Xteink X3
+        run: pio run -e xteink_x3
+
+      - name: Upload X3 firmware (.bin) artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kienos-x3-firmware
+          path: .pio/build/xteink_x3/firmware.bin
+          if-no-files-found: error
