@@ -9,7 +9,7 @@ void setup() {
   delay(200);
 
   LunarDate ld = LunarCalendar::solarToLunar(25, 11, 2026);
-  CultivationManager::recordReadingSession(g_state, 15, 1200, true, false, ld.isDoubleSpiritDay());
+  CultivationManager::recordReadingSession(g_state, 15, 1200, true, false, ld.isDoubleSpiritStoneDay());
 
   Serial.printf("Canh gioi: %s Tang %d | Linh thach: %d | Phap bao: %d/36\n",
                 CultivationManager::getRealmName(g_state.realmIndex).c_str(),
